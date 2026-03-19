@@ -32,8 +32,7 @@ export function RoomRow({
 }: RoomRowProps) {
   console.log("render", rowId);
 
-  const { hoveredCell, setHoveredCell, config } = useAppContext();
-
+  const { config } = useAppContext();
   const getBookingStatus = (status: BookingStatus): string => {
     return STATUS_COLORS[status] ?? "#ccc";
   };
@@ -69,18 +68,17 @@ export function RoomRow({
       });
   }, [bookings, visibleStartIndex, visibleEndIndex, config.dateRangeStart]);
 
-  const isHovered = hoveredCell?.rowId === rowId;
-
   return (
     <div
+      className="booking-grid-row"
       style={{
         display: "flex",
         alignItems: "center",
         borderBottom: "1px solid #eee",
-        background: isHovered ? "#f0f7ff" : "white",
       }}
     >
       <div
+        className="booking-grid-room-cell"
         style={{
           width: 140,
           minWidth: 140,
@@ -88,7 +86,6 @@ export function RoomRow({
           fontWeight: 500,
           fontSize: 13,
           borderRight: "1px solid #eee",
-          background: "white",
           zIndex: 1,
         }}
       >
@@ -99,25 +96,21 @@ export function RoomRow({
         {/* Day cell backgrounds */}
         {Array.from(
           { length: visibleEndIndex - visibleStartIndex + 1 },
-          (_, i) => {
-            const dayIndex = visibleStartIndex + i;
-            const isCellHovered =
-              hoveredCell?.rowId === rowId &&
-              hoveredCell?.dayIndex === dayIndex;
+          (_, index) => {
+            const dayIndex = visibleStartIndex + index;
             return (
               <div
                 key={dayIndex}
+                className="booking-grid-day-cell"
                 style={{
                   position: "absolute",
                   left: (dayIndex - visibleStartIndex) * COLUMN_WIDTH_PX,
                   width: COLUMN_WIDTH_PX,
                   height: 40,
-                  background: isCellHovered ? "#e3f2fd" : "transparent",
+                  background: "transparent",
                   borderRight: "1px solid #f0f0f0",
                   cursor: "default",
                 }}
-                onMouseEnter={() => setHoveredCell({ rowId, dayIndex })}
-                onMouseLeave={() => setHoveredCell(null)}
               />
             );
           },

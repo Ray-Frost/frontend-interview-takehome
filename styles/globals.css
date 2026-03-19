@@ -14,3 +14,23 @@ a {
   color: inherit;
   text-decoration: none;
 }
+
+.booking-grid-row {
+  background: white;
+}
+
+.booking-grid-room-cell {
+  background: white;
+}
+
+.booking-grid-row:hover {
+  background: #f0f7ff;
+}
+
+.booking-grid-row:hover .booking-grid-room-cell {
+  background: #f0f7ff;
+}
+
+.booking-grid-day-cell:hover {
+  background: #e3f2fd !important;
+}
