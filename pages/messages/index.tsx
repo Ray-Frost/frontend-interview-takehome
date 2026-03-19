@@ -1,23 +1,12 @@
-import React, { useEffect } from 'react'
+import React from 'react'
 import type { NextPage } from 'next'
 import { useRouter } from 'next/router'
-import useSWR from 'swr'
 import { Ticket } from '@/types'
 import { useMessagesContext } from '@/context/MessagesContext'
 
-const fetcher = (url: string) => fetch(url).then(r => r.json())
-
 const MessagesPage: NextPage = () => {
   const router = useRouter()
-  const { activeTicketId, setUnreadCount } = useMessagesContext()
-  const { data: tickets } = useSWR<Ticket[]>('/api/tickets', fetcher)
-
-  // Sync unread count into context
-  useEffect(() => {
-    if (tickets) {
-      setUnreadCount(tickets.filter(t => t.unread).length)
-    }
-  }, [tickets, setUnreadCount])
+  const { activeTicketId, tickets, hasLoadedTickets } = useMessagesContext()
 
   const currentTicketId = activeTicketId
 
@@ -25,7 +14,7 @@ const MessagesPage: NextPage = () => {
     router.push(`/messages?ticketId=${ticket.id}&houseId=${ticket.houseId}`)
   }
 
-  const activeTicket = tickets?.find(t => t.id === currentTicketId)
+  const activeTicket = tickets.find(ticket => ticket.id === currentTicketId)
 
   return (
     <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
@@ -41,47 +30,53 @@ const MessagesPage: NextPage = () => {
           Messages
         </div>
 
-        {tickets?.map(ticket => {
-          const isActive = ticket.id === currentTicketId
-          return (
-            <div
-              key={ticket.id}
-              onClick={() => handleTicketClick(ticket)}
-              style={{
-                padding: '14px 20px',
-                borderBottom: '1px solid #f0f0f0',
-                cursor: 'pointer',
-                background: isActive ? '#f0f7ff' : 'white',
-                borderLeft: isActive ? '3px solid #6c63ff' : '3px solid transparent',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-                <span style={{ fontWeight: ticket.unread ? 600 : 400, fontSize: 13 }}>
-                  {ticket.guestName}
-                </span>
-                {ticket.unread && (
-                  <span style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: '50%',
-                    background: '#6c63ff',
-                    flexShrink: 0,
-                    marginTop: 4,
-                  }} />
-                )}
+        {hasLoadedTickets ? (
+          tickets.map(ticket => {
+            const isActive = ticket.id === currentTicketId
+            return (
+              <div
+                key={ticket.id}
+                onClick={() => handleTicketClick(ticket)}
+                style={{
+                  padding: '14px 20px',
+                  borderBottom: '1px solid #f0f0f0',
+                  cursor: 'pointer',
+                  background: isActive ? '#f0f7ff' : 'white',
+                  borderLeft: isActive ? '3px solid #6c63ff' : '3px solid transparent',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+                  <span style={{ fontWeight: ticket.unread ? 600 : 400, fontSize: 13 }}>
+                    {ticket.guestName}
+                  </span>
+                  {ticket.unread && (
+                    <span style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: '50%',
+                      background: '#6c63ff',
+                      flexShrink: 0,
+                      marginTop: 4,
+                    }} />
+                  )}
+                </div>
+                <div style={{ fontSize: 12, color: '#555', marginBottom: 3, fontWeight: ticket.unread ? 500 : 400 }}>
+                  {ticket.subject}
+                </div>
+                <div style={{ fontSize: 11, color: '#888', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {ticket.lastMessage}
+                </div>
+                <div style={{ fontSize: 10, color: '#bbb', marginTop: 4 }}>
+                  {ticket.houseName}
+                </div>
               </div>
-              <div style={{ fontSize: 12, color: '#555', marginBottom: 3, fontWeight: ticket.unread ? 500 : 400 }}>
-                {ticket.subject}
-              </div>
-              <div style={{ fontSize: 11, color: '#888', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {ticket.lastMessage}
-              </div>
-              <div style={{ fontSize: 10, color: '#bbb', marginTop: 4 }}>
-                {ticket.houseName}
-              </div>
-            </div>
-          )
-        })}
+            )
+          })
+        ) : (
+          <div style={{ padding: '20px', color: '#888', fontSize: 13 }}>
+            Loading messages...
+          </div>
+        )}
       </div>
 
       {/* Message view */}
@@ -102,6 +97,17 @@ const MessagesPage: NextPage = () => {
             }}>
               {activeTicket.lastMessage}
             </div>
+          </div>
+        ) : !hasLoadedTickets ? (
+          <div style={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#bbb',
+            fontSize: 14,
+          }}>
+            Loading messages...
           </div>
         ) : (
           <div style={{
