@@ -28,6 +28,12 @@
 - 可见列数写死为 `14`，窗口范围没有根据真实容器宽度动态变化；在不同 viewport 下，表头、网格单元和 booking bar 的对齐基础并不稳定。
 - `RoomRow` 里的背景格子和 booking bar 使用的是相对可见窗口的定位方式，而不是完整轨道坐标，这让横向滚动时多个渲染层更容易各自计算、相互漂移。
 
+### 6. 消息页选中态存在多份来源并发生残留
+
+- `messages` 页面同时从 URL query、SSR `initialTicketId` 和 `MessagesContext.activeTicketId` 三处决定当前选中的 ticket。
+- `MessagesContext` 里的 `activeTicketId` / `currentHouse` 通过 `useEffect` 从 query 写入本地 state，但 query 消失时不会清空旧值。
+- 结果是从 `/messages?ticketId=...` 回到 `/messages` 后，页面仍可能继续展示上一次选中的会话，状态来源发生漂移。
+
 ## 应用的修复
 
 ### 1. Next.js 安全漏洞
@@ -59,6 +65,12 @@
 - `useVisibleRange` 改为根据真实滚动容器宽度和左侧固定列宽计算 `{ startIndex, endIndex, offsetPx }`，并在容器 resize 时同步更新窗口。
 - 抽出共享的 `VisibleDayColumns` 组件，统一处理可见列索引展开和窗口层定位；`BookingGrid` 用它消费 `offsetPx` 平移表头日期窗口，`RoomRow` 则继续在完整轨道坐标中渲染背景格子和 booking bar。
 
+### 6. 消息页选中态统一到 URL
+
+- 删除 `pages/messages/index.tsx` 中基于 `initialTicketId` 的 SSR fallback，只保留一条选中链路。
+- `MessagesContext` 不再把 `activeTicketId` 和 `currentHouse` 存成可残留的本地 state，而是每次 render 直接从 `router.query` 派生。
+- 消息页现在只消费 context 中派生出来的 `activeTicketId`；当 URL 里没有 `ticketId` 时，选中态会自然回到 `null`。
+
 ## 权衡取舍
 
 ### 1. Next.js 安全漏洞
@@ -88,6 +100,12 @@
 - 我接受新增一个很薄的 `VisibleDayColumns` 组件，把“可见列展开 + 绝对定位窗口层”这段重复逻辑收敛起来；但 booking bar 的位置计算仍然留在 `RoomRow`，避免把抽象边界扩张到具体业务布局。
 - 固定列仍然通过内联样式显式设置宽度和背景色，这会让布局约束比较集中，但代价是这部分样式还没有进一步抽到共享样式层。
 
+### 6. 消息页选中态统一到 URL
+
+- 这次选择 URL 作为唯一的 source of truth，因为“当前展示哪条会话”本质上是导航状态，天然应该和浏览器地址保持一致。
+- 代价是 `MessagesContext` 不再持有一份可主动写入的 `activeTicketId/currentHouse` state；如果后续需要支持脱离 URL 的草稿态或临时选中态，应当新增独立状态，而不是重新把路由状态写回 context。
+- 选择去掉 `getServerSideProps` 里的 `initialTicketId` 是因为它只是 query 的镜像，没有引入额外信息；继续保留只会制造双份同源状态和同步成本。
+
 ## 如果有更多时间
 
 ### 1. Next.js 安全漏洞
@@ -102,3 +120,7 @@
 ### 5. Booking Grid 横向窗口对齐修复
 
 - 把 `TOTAL_DAYS` 从固定常量改为由 `dateRangeStart` / `dateRangeEnd` 推导，消除 30 天窗口和配置范围之间潜在的不一致。
+
+### 6. 消息页选中态统一到 URL
+
+- 如果后续消息页需要支持首条会话自动选中，可以显式定义一条新规则，例如“只有 URL 缺省且用户首次进入 `/messages` 时才自动跳转到第一条会话”，而不是重新恢复多来源 fallback。

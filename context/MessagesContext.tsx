@@ -2,7 +2,6 @@ import React, {
   createContext,
   useContext,
   useState,
-  useEffect,
   ReactNode,
 } from 'react'
 import { useRouter } from 'next/router'
@@ -21,9 +20,7 @@ const HOUSES: House[] = [
 
 interface MessagesContextValue {
   currentHouse: House | null
-  setCurrentHouse: (house: House | null) => void
   activeTicketId: string | null
-  setActiveTicketId: (id: string | null) => void
   unreadCount: number
   setUnreadCount: (n: number) => void
 }
@@ -32,33 +29,20 @@ const MessagesContext = createContext<MessagesContextValue | null>(null)
 
 export function MessagesProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
-  const [currentHouse, setCurrentHouse] = useState<House | null>(null)
-  const [activeTicketId, setActiveTicketId] = useState<string | null>(null)
   const [unreadCount, setUnreadCount] = useState(0)
-
-  useEffect(() => {
-    const houseId = router.query.houseId as string
-    const ticketId = router.query.ticketId as string
-
-    if (ticketId) {
-      setActiveTicketId(ticketId)
-    }
-
-    if (houseId) {
-      const house = HOUSES.find(h => h.id === houseId)
-      if (house) {
-        setCurrentHouse(house)
-      }
-    }
-  }, [router.query])
+  const activeTicketId = typeof router.query.ticketId === 'string'
+    ? router.query.ticketId
+    : null
+  const currentHouseId = typeof router.query.houseId === 'string'
+    ? router.query.houseId
+    : null
+  const currentHouse = HOUSES.find(house => house.id === currentHouseId) ?? null
 
   return (
     <MessagesContext.Provider
       value={{
         currentHouse,
-        setCurrentHouse,
         activeTicketId,
-        setActiveTicketId,
         unreadCount,
         setUnreadCount,
       }}
