@@ -2,6 +2,8 @@ import React, {
   createContext,
   useContext,
   ReactNode,
+  useEffect,
+  useState,
 } from 'react'
 import { useRouter } from 'next/router'
 import useSWR from 'swr'
@@ -35,7 +37,7 @@ function fetchTickets(url: string) {
 export function MessagesProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
   const { data } = useSWR<Ticket[]>('/api/tickets', fetchTickets)
-  const tickets = data ?? []
+  const [readSnapshotsByTicketId, setReadSnapshotsByTicketId] = useState<Record<string, string>>({})
   const hasLoadedTickets = data !== undefined
   const activeTicketId = typeof router.query.ticketId === 'string'
     ? router.query.ticketId
@@ -44,7 +46,42 @@ export function MessagesProvider({ children }: { children: ReactNode }) {
     ? router.query.houseId
     : null
   const currentHouse = HOUSES.find(house => house.id === currentHouseId) ?? null
+  const rawTickets = data ?? []
+  const tickets = rawTickets.map(ticket => {
+    const hasReadCurrentSnapshot =
+      readSnapshotsByTicketId[ticket.id] === ticket.updatedAt
+
+    if (!hasReadCurrentSnapshot) {
+      return ticket
+    }
+
+    return {
+      ...ticket,
+      unread: false,
+    }
+  })
   const unreadCount = tickets.filter(ticket => ticket.unread).length
+
+  useEffect(() => {
+    if (!activeTicketId) return
+
+    const activeTicket = data?.find(ticket => ticket.id === activeTicketId)
+    if (!activeTicket?.unread) return
+
+    setReadSnapshotsByTicketId(previousReadSnapshotsByTicketId => {
+      const currentReadSnapshot =
+        previousReadSnapshotsByTicketId[activeTicketId]
+
+      if (currentReadSnapshot === activeTicket.updatedAt) {
+        return previousReadSnapshotsByTicketId
+      }
+
+      return {
+        ...previousReadSnapshotsByTicketId,
+        [activeTicketId]: activeTicket.updatedAt,
+      }
+    })
+  }, [activeTicketId, data])
 
   return (
     <MessagesContext.Provider
