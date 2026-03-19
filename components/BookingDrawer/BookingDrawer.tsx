@@ -17,6 +17,15 @@ const STATUS_LABELS: Record<string, string> = {
   cancelled: 'Cancelled',
 }
 
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ display: 'flex', gap: 12, marginBottom: 10 }}>
+      <span style={{ fontSize: 13, color: '#888', width: 70, flexShrink: 0 }}>{label}</span>
+      <span style={{ fontSize: 13 }}>{value}</span>
+    </div>
+  )
+}
+
 export function BookingDrawer({ booking, onClose }: BookingDrawerProps) {
   const { data: detail, isLoading } = useSWR<BookingDetail>(
     booking ? `/api/bookings/${booking.id}` : null,
@@ -108,15 +117,6 @@ export function BookingDrawer({ booking, onClose }: BookingDrawerProps) {
           ) : null}
         </div>
       </div>
-    </div>
-  )
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div style={{ display: 'flex', gap: 12, marginBottom: 10 }}>
-      <span style={{ fontSize: 13, color: '#888', width: 70, flexShrink: 0 }}>{label}</span>
-      <span style={{ fontSize: 13 }}>{value}</span>
     </div>
   )
 }
