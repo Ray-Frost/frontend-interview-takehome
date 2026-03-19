@@ -1,72 +1,31 @@
-import React, { useMemo } from "react";
-import { Booking, BookingStatus } from "@/types";
-import { useAppContext } from "@/context/AppContext";
+import React, { memo, useMemo } from "react";
+import { Booking, PositionedBooking } from "@/types";
 
 const COLUMN_WIDTH_PX = 48;
 
 interface RoomRowProps {
-  rowId: string;
   rowName: string;
-  bookings: Booking[];
+  positionedBookings: PositionedBooking[];
   visibleStartIndex: number;
   visibleEndIndex: number;
-  totalDays: number;
   onBookingClick: (booking: Booking) => void;
 }
 
-const STATUS_COLORS: Record<BookingStatus, string> = {
-  confirmed: "#4CAF50",
-  pending: "#FF9800",
-  in_house: "#2196F3",
-  checked_out: "#9E9E9E",
-  cancelled: "#F44336",
-};
-
-export function RoomRow({
-  rowId,
+function RoomRowComponent({
   rowName,
-  bookings,
+  positionedBookings,
   visibleStartIndex,
   visibleEndIndex,
   onBookingClick,
 }: RoomRowProps) {
-  console.log("render", rowId);
-
-  const { config } = useAppContext();
-  const getBookingStatus = (status: BookingStatus): string => {
-    return STATUS_COLORS[status] ?? "#ccc";
-  };
-
   const visibleBookings = useMemo(() => {
-    return bookings
-      .filter((b) => {
-        const startDay = Math.floor(
-          (new Date(b.checkIn).getTime() -
-            new Date(config.dateRangeStart).getTime()) /
-            (1000 * 60 * 60 * 24),
-        );
-        const endDay = Math.floor(
-          (new Date(b.checkOut).getTime() -
-            new Date(config.dateRangeStart).getTime()) /
-            (1000 * 60 * 60 * 24),
-        );
-        return endDay >= visibleStartIndex && startDay <= visibleEndIndex;
-      })
-      .map((b) => {
-        const startDay = Math.floor(
-          (new Date(b.checkIn).getTime() -
-            new Date(config.dateRangeStart).getTime()) /
-            (1000 * 60 * 60 * 24),
-        );
-        const endDay = Math.floor(
-          (new Date(b.checkOut).getTime() -
-            new Date(config.dateRangeStart).getTime()) /
-            (1000 * 60 * 60 * 24),
-        );
-        const color = getBookingStatus(b.status);
-        return { booking: b, startDay, endDay, color };
-      });
-  }, [bookings, visibleStartIndex, visibleEndIndex, config.dateRangeStart]);
+    return positionedBookings.filter((positionedBooking) => {
+      return (
+        positionedBooking.endDayIndex >= visibleStartIndex &&
+        positionedBooking.startDayIndex <= visibleEndIndex
+      );
+    });
+  }, [positionedBookings, visibleStartIndex, visibleEndIndex]);
 
   return (
     <div
@@ -117,14 +76,14 @@ export function RoomRow({
         )}
 
         {/* Booking bars */}
-        {visibleBookings.map(({ booking, startDay, endDay, color }) => {
+        {visibleBookings.map(({ booking, startDayIndex, endDayIndex, color }) => {
           const left = Math.max(
             0,
-            (startDay - visibleStartIndex) * COLUMN_WIDTH_PX,
+            (startDayIndex - visibleStartIndex) * COLUMN_WIDTH_PX,
           );
           const width =
-            (Math.min(endDay, visibleEndIndex) -
-              Math.max(startDay, visibleStartIndex) +
+            (Math.min(endDayIndex, visibleEndIndex) -
+              Math.max(startDayIndex, visibleStartIndex) +
               1) *
             COLUMN_WIDTH_PX;
           return (
@@ -159,3 +118,6 @@ export function RoomRow({
     </div>
   );
 }
+
+export const RoomRow = memo(RoomRowComponent);
+RoomRow.displayName = "RoomRow";

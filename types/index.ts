@@ -21,6 +21,13 @@ export interface Booking {
   notes?: string
 }
 
+export interface PositionedBooking {
+  booking: Booking
+  startDayIndex: number
+  endDayIndex: number
+  color: string
+}
+
 export interface BookingDetail extends Booking {
   guestEmail: string
   guestPhone: string

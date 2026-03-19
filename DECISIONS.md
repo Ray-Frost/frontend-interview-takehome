@@ -16,6 +16,12 @@
 - `Booking Calendar` 里的 `hoveredCell` 放在全局 `AppContext` 中，任意单元格 hover 都会更新 context。
 - `RoomRow` 依赖这个 context 后，鼠标在网格中移动时会触发所有行重新执行，放大了 hover 交互的渲染成本。
 
+### 4. Booking Grid 横向滚动的渲染成本过高
+
+- `Booking Calendar` 的横向虚拟化依赖 `visibleRange`，但初始实现把连续变化的 `scrollLeft` 直接放进 React state。
+- 结果是只要发生横向滚动，`BookingGrid` 就会在几乎每个 `scroll` event 上重渲染，并带着所有 `RoomRow` 一起重新执行。
+- 同时，`RoomRow` 每次渲染还会重复做按房间筛 booking、日期偏移计算和状态色计算，进一步放大跨列更新时的成本。
+
 ## 应用的修复
 
 ### 1. Next.js 安全漏洞
@@ -35,6 +41,12 @@
 - `RoomRow` 改为只消费静态配置；行高亮和单元格高亮统一交给 CSS 的 `:hover` 规则处理。
 - 默认背景色也一并从内联样式挪到样式表，避免内联 `background: white` 覆盖 hover 背景，确保行和房间名单元格的高亮能正常生效。
 
+### 4. Booking Grid 横向滚动渲染优化
+
+- `useVisibleRange` 改为只维护离散的 `{ startIndex, endIndex }`，并且只有在横向滚动跨过列边界时才更新 state，避免同一列内的细小滑动持续触发 React 重渲染。
+- `BookingGrid` 统一使用 `config.dateRangeStart` 作为日历起点，提前构建 day labels，并按房间预计算 `PositionedBooking`，把日期偏移和状态色从 `RoomRow` 中移出。
+- `RoomRow` 改为消费预计算后的 `positionedBookings` 并用 `React.memo` 包装，让组件只负责可见区过滤和渲染，减少跨列更新时的重复计算。
+
 ## 权衡取舍
 
 ### 1. Next.js 安全漏洞
@@ -52,6 +64,12 @@
 - 这次只处理了 hover 触发的 render storm，把状态更新从 React 链路中拿掉；没有在同一提交里继续处理横向滚动导致的重渲染，以避免把不同触发路径的性能问题混成一个补丁。
 - 采用 CSS hover 的代价是视觉状态改由样式优先级控制，因此默认态和 hover 态都需要放在同一套样式规则下维护，不能再把默认背景留在内联样式里。
 
+### 4. Booking Grid 横向滚动渲染优化
+
+- 这次把优化重点放在“减少无意义的 React 更新”和“减少每次有效更新的行内计算”两层，没有继续处理表头与网格主体的像素级滚动对齐。
+- 目前表头仍然按列窗口跳转，而主体内容按真实像素滚动；因此在同一列内横向滑动时，booking bar 和日期表头仍可能暂时错位。这是已知限制，不属于本次提交要解决的问题。
+- 我选择先交付渲染降噪和数据预计算，因为它们直接解决 render storm；表头平滑对齐需要单独引入列内偏移同步逻辑，适合在下一步独立处理。
+
 ## 如果有更多时间
 
 ### 1. Next.js 安全漏洞
@@ -59,6 +77,7 @@
 - 在主线完成后，新开分支升级到 `Next 16.2.0+`，并同步处理 `React 19`、ESLint CLI 迁移、Node LTS 基线和完整构建验证。
 - 对比 `14.2.35` 和 `16.x` 的收益与额外复杂度，再决定是否值得把最终交付切换到新主版本。
 
-### 3. Booking Grid 交互性能
+### 4. Booking Grid 横向滚动体验
 
-- 在 hover 触发链路之外，继续处理横向滚动导致的 `RoomRow` 重渲染，优先减少 `scroll` 事件驱动的父组件更新，再评估是否需要进一步稳定 row props 或引入更完整的虚拟化策略。
+- 为表头补上列内像素偏移同步，让日期列和 booking bar 在同一列宽内横向滑动时也保持对齐。
+- 在当前渲染降噪基础上，再评估是否值得接入 `visibleColumnsBuffer` 或进一步收敛虚拟化实现细节。
