@@ -2,5 +2,19 @@
   "extends": [
     "next/core-web-vitals",
     "next/typescript"
-  ]
+  ],
+  "rules": {
+    "no-use-before-define": "off",
+    "@typescript-eslint/no-use-before-define": [
+      "error",
+      {
+        "classes": true,
+        "enums": true,
+        "functions": true,
+        "ignoreTypeReferences": true,
+        "typedefs": true,
+        "variables": true
+      }
+    ]
+  }
 }
