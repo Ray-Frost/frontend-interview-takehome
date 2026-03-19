@@ -13,7 +13,7 @@ const fetcher = (url: string) => fetch(url).then(r => r.json())
 
 const MessagesPage: NextPage<MessagesPageProps> = ({ initialTicketId }) => {
   const router = useRouter()
-  const { activeTicketId, setActiveTicketId, setUnreadCount } = useMessagesContext()
+  const { activeTicketId, setUnreadCount } = useMessagesContext()
   const { data: tickets } = useSWR<Ticket[]>('/api/tickets', fetcher)
 
   // Sync unread count into context
