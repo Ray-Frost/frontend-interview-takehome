@@ -1,11 +1,21 @@
-import React from 'react'
-import { Booking, RoomUnit } from '@/types'
+import React, { useMemo } from 'react'
+import { Booking, BookingStatus, PositionedBooking, RoomUnit } from '@/types'
 import { useVisibleRange } from '@/hooks/useVisibleRange'
+import { buildDayLabels, getDayOffset } from '@/lib/bookingCalendar'
 import { RoomRow } from './RoomRow'
 import {useAppContext} from "@/context/AppContext";
 
 const COLUMN_WIDTH_PX = 48
 const TOTAL_DAYS = 30
+const EMPTY_POSITIONED_BOOKINGS: PositionedBooking[] = []
+
+const STATUS_COLORS: Record<BookingStatus, string> = {
+  confirmed: '#4CAF50',
+  pending: '#FF9800',
+  in_house: '#2196F3',
+  checked_out: '#9E9E9E',
+  cancelled: '#F44336',
+}
 
 interface BookingGridProps {
   roomUnits: RoomUnit[]
@@ -13,20 +23,25 @@ interface BookingGridProps {
   onBookingClick: (booking: Booking) => void
 }
 
-function getDayLabels(startDate: string, totalDays: number): string[] {
-  return Array.from({ length: totalDays }, (_, i) => {
-    const d = new Date(startDate)
-    d.setDate(d.getDate() + i)
-    return `${d.getMonth() + 1}/${d.getDate()}`
-  })
-}
-
 export function BookingGrid({ roomUnits, bookings, onBookingClick }: BookingGridProps) {
   const { visibleRange, handleScroll } = useVisibleRange()
   const { config } = useAppContext()
 
-  const startDate = new Date().toISOString().split('T')[0]
-  const dayLabels = getDayLabels(startDate, TOTAL_DAYS)
+  const calendarStartDate = config.dateRangeStart
+  const dayLabels = buildDayLabels(calendarStartDate, TOTAL_DAYS)
+  const bookingsByRoomId = useMemo(() => {
+    return bookings.reduce<Record<string, PositionedBooking[]>>((groupedBookings, booking) => {
+      const roomBookings = groupedBookings[booking.roomUnit.roomId] ?? []
+      roomBookings.push({
+        booking,
+        startDayIndex: getDayOffset(booking.checkIn, calendarStartDate),
+        endDayIndex: getDayOffset(booking.checkOut, calendarStartDate),
+        color: STATUS_COLORS[booking.status] ?? '#ccc',
+      })
+      groupedBookings[booking.roomUnit.roomId] = roomBookings
+      return groupedBookings
+    }, {})
+  }, [bookings, calendarStartDate])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
@@ -73,18 +88,13 @@ export function BookingGrid({ roomUnits, bookings, onBookingClick }: BookingGrid
       >
         <div style={{ minWidth: TOTAL_DAYS * COLUMN_WIDTH_PX + 140 }}>
           {roomUnits.map(room => {
-            const roomBookings = bookings.filter(
-              b => b.roomUnit.roomId === room.id
-            )
             return (
               <RoomRow
                 key={room.id}
-                rowId={room.id}
                 rowName={room.name}
-                bookings={roomBookings}
+                positionedBookings={bookingsByRoomId[room.id] ?? EMPTY_POSITIONED_BOOKINGS}
                 visibleStartIndex={visibleRange.startIndex}
                 visibleEndIndex={visibleRange.endIndex}
-                totalDays={TOTAL_DAYS}
                 onBookingClick={onBookingClick}
               />
             )
