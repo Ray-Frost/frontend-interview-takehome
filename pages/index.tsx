@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import type { NextPage } from 'next'
 import useSWR from 'swr'
-import { Booking, RoomUnit } from '@/types'
+import { Booking } from '@/types'
 import { BookingGrid } from '@/components/BookingGrid/BookingGrid'
 import { BookingDrawer } from '@/components/BookingDrawer/BookingDrawer'
 import { ROOM_UNITS } from '@/lib/mockData'

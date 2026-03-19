@@ -28,7 +28,6 @@ export function RoomRow({
   bookings,
   visibleStartIndex,
   visibleEndIndex,
-  totalDays,
   onBookingClick,
 }: RoomRowProps) {
   console.log("render", rowId);
