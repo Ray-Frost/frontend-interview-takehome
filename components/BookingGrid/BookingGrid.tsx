@@ -52,6 +52,8 @@ export function BookingGrid({ roomUnits, bookings, onBookingClick }: BookingGrid
     }, {})
   }, [bookings, calendarStartDate])
   const trackWidthPx = TOTAL_DAYS * columnWidthPx + ROOM_LABEL_WIDTH_PX
+  const visibleStartIndex = visibleRange.startIndex
+  const visibleEndIndex = visibleRange.endIndex
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
@@ -68,7 +70,8 @@ export function BookingGrid({ roomUnits, bookings, onBookingClick }: BookingGrid
           }}
         >
           <VisibleDayColumns
-            visibleRange={visibleRange}
+            startIndex={visibleStartIndex}
+            endIndex={visibleEndIndex}
             offsetPx={visibleRange.offsetPx}
             renderDay={(dayIndex, visibleColumnIndex) => (
               <div
@@ -106,7 +109,8 @@ export function BookingGrid({ roomUnits, bookings, onBookingClick }: BookingGrid
                 columnWidthPx={columnWidthPx}
                 positionedBookings={bookingsByRoomId[room.id] ?? EMPTY_POSITIONED_BOOKINGS}
                 roomLabelWidthPx={ROOM_LABEL_WIDTH_PX}
-                visibleRange={visibleRange}
+                visibleStartIndex={visibleStartIndex}
+                visibleEndIndex={visibleEndIndex}
                 onBookingClick={onBookingClick}
               />
             )

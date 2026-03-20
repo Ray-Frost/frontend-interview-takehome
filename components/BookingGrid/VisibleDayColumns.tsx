@@ -1,23 +1,24 @@
 import React, { useMemo } from 'react'
-import { VisibleRange } from '@/hooks/useVisibleRange'
 
 interface VisibleDayColumnsProps {
-  visibleRange: VisibleRange
+  startIndex: number
+  endIndex: number
   offsetPx?: number
   renderDay: (dayIndex: number, visibleColumnIndex: number) => React.ReactNode
 }
 
 export function VisibleDayColumns({
-  visibleRange,
+  startIndex,
+  endIndex,
   offsetPx = 0,
   renderDay,
 }: VisibleDayColumnsProps) {
   const visibleDayIndices = useMemo(() => {
     return Array.from(
-      { length: visibleRange.endIndex - visibleRange.startIndex + 1 },
-      (_, dayOffsetIndex) => visibleRange.startIndex + dayOffsetIndex
+      { length: endIndex - startIndex + 1 },
+      (_, dayOffsetIndex) => startIndex + dayOffsetIndex
     )
-  }, [visibleRange.endIndex, visibleRange.startIndex])
+  }, [endIndex, startIndex])
 
   return (
     <div
