@@ -34,6 +34,16 @@
 - `MessagesContext` 里的 `activeTicketId` / `currentHouse` 通过 `useEffect` 从 query 写入本地 state，但 query 消失时不会清空旧值。
 - 结果是从 `/messages?ticketId=...` 回到 `/messages` 后，页面仍可能继续展示上一次选中的会话，状态来源发生漂移。
 
+### 7. 侧边栏未读数依赖消息页副作用初始化
+
+- `Sidebar` 直接读取 `MessagesContext.unreadCount`，但旧实现把它初始化为 `0`，真正的值只会在 `pages/messages/index.tsx` 里通过 `useEffect` 写回 context。
+- 如果用户首次进入 `/` 而不是 `/messages`，全局 provider 在首屏没有任何机会拿到真实未读数，侧边栏就会先基于错误的初始值渲染。
+
+### 8. 打开会话后未读状态不会被消费
+
+- 消息列表里的 `unread` 只来自 `/api/tickets` 返回值，点击 ticket 只会改 URL，不会改任何本地或服务端状态。
+- 结果是进入具体会话后，列表里的蓝点和侧边栏未读数都不会减少，交互语义不完整。
+
 ## 应用的修复
 
 ### 1. Next.js 安全漏洞
@@ -71,6 +81,18 @@
 - `MessagesContext` 不再把 `activeTicketId` 和 `currentHouse` 存成可残留的本地 state，而是每次 render 直接从 `router.query` 派生。
 - 消息页现在只消费 context 中派生出来的 `activeTicketId`；当 URL 里没有 `ticketId` 时，选中态会自然回到 `null`。
 
+### 7. 侧边栏未读数统一到全局消息数据源
+
+- 把 `tickets` 请求和 `unreadCount` 派生移动到 `_app` 下全局挂载的 `MessagesProvider`，让所有入口页都消费同一份消息数据。
+- 消息页不再通过页面级 `useEffect` 反向同步未读数，而是直接读取 context 中的 `tickets` 和 `unreadCount`。
+- 首屏加载后，仅在 `Messages` 的 badge 区域展示**有效**数字。
+
+### 8. 在消息 provider 内维护会话级已读覆盖层
+
+- 保持 `/api/tickets` 作为只读 mock 数据源，把“打开某条会话后应视为已读”放在 `MessagesProvider` 里处理。
+- 当 URL 选中某条未读 ticket 时，provider 会把该 ticket 当前的 `updatedAt` 记录到本地读取快照里，并在派生 `tickets` 时仅对同一版本的会话覆盖 `unread` 为 `false`。
+- 这样列表样式、右侧详情和侧边栏未读数都继续消费同一份 provider 数据，同时不需要额外引入一个临时写接口。
+
 ## 权衡取舍
 
 ### 1. Next.js 安全漏洞
@@ -105,6 +127,18 @@
 - 这次选择 URL 作为唯一的 source of truth，因为“当前展示哪条会话”本质上是导航状态，天然应该和浏览器地址保持一致。
 - 代价是 `MessagesContext` 不再持有一份可主动写入的 `activeTicketId/currentHouse` state；如果后续需要支持脱离 URL 的草稿态或临时选中态，应当新增独立状态，而不是重新把路由状态写回 context。
 - 选择去掉 `getServerSideProps` 里的 `initialTicketId` 是因为它只是 query 的镜像，没有引入额外信息；继续保留只会制造双份同源状态和同步成本。
+
+### 7. 侧边栏未读数统一到全局消息数据源
+
+- 我接受把消息列表请求提升到 `MessagesProvider`，因为 `Sidebar` 本来就属于全局 UI；让 provider 拥有这份数据比继续依赖页面副作用更符合组件层级。
+- 首屏进入 `/` 时，`Messages` badge 会短暂处于未加载状态，这比错误显示 `0` 更符合真实语义。
+- 当前实现已经在模拟真实后端的 API 边界；如果后续把项目内的 mock API 替换成真实后端服务，仍应保留“由全局 provider 持有消息数据”这条职责边界。考虑到侧边栏挂在 `_app`，要为这次问题引入 SSR `prefetch + hydrate` 会连带扩大到全局数据获取方式调整，所以我先保留当前首屏短暂 loading 的权衡。
+
+### 8. 在消息 provider 内维护会话级已读覆盖层
+
+- 把“本会话内已读”作为 provider 的局部 UI 状态维护，而不是直接改 SWR cache；因为在当前只读 mock API 下，单独改 cache 容易在后续 revalidate 时被原始数据冲回未读，也无法清晰表达“当前已读的是哪一个 `updatedAt` 版本”。
+- 这种做法会让已读状态在刷新后回到 API 的初始值，但能稳定覆盖当前交互路径。
+- 已读覆盖层额外绑定了 `updatedAt`，这样即使后续数据源变成真实后端，只要同一 ticket 收到更新并带来新的时间戳，本地已读覆盖也不会错误吞掉新的未读状态。
 
 ## 如果有更多时间
 
