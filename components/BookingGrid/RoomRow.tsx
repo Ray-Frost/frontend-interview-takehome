@@ -1,6 +1,5 @@
 import React, { memo, useMemo } from 'react'
 import { Booking, PositionedBooking } from '@/types'
-import { VisibleRange } from '@/hooks/useVisibleRange'
 import { VisibleDayColumns } from './VisibleDayColumns'
 
 interface RoomRowProps {
@@ -8,7 +7,8 @@ interface RoomRowProps {
   columnWidthPx: number
   positionedBookings: PositionedBooking[]
   roomLabelWidthPx: number
-  visibleRange: VisibleRange
+  visibleStartIndex: number
+  visibleEndIndex: number
   onBookingClick: (booking: Booking) => void
 }
 
@@ -17,17 +17,18 @@ function RoomRowComponent({
   columnWidthPx,
   positionedBookings,
   roomLabelWidthPx,
-  visibleRange,
+  visibleStartIndex,
+  visibleEndIndex,
   onBookingClick,
 }: RoomRowProps) {
   const visibleBookings = useMemo(() => {
     return positionedBookings.filter((positionedBooking) => {
       return (
-        positionedBooking.endDayIndex >= visibleRange.startIndex &&
-        positionedBooking.startDayIndex <= visibleRange.endIndex
+        positionedBooking.endDayIndex >= visibleStartIndex &&
+        positionedBooking.startDayIndex <= visibleEndIndex
       )
     })
-  }, [positionedBookings, visibleRange.endIndex, visibleRange.startIndex])
+  }, [positionedBookings, visibleEndIndex, visibleStartIndex])
 
   return (
     <div
@@ -58,7 +59,8 @@ function RoomRowComponent({
 
       <div style={{ position: 'relative', height: 40, flex: 1, overflow: 'hidden' }}>
         <VisibleDayColumns
-          visibleRange={visibleRange}
+          startIndex={visibleStartIndex}
+          endIndex={visibleEndIndex}
           renderDay={(dayIndex) => {
             return (
               <div
@@ -85,10 +87,10 @@ function RoomRowComponent({
           }}
         >
           {visibleBookings.map(({ booking, startDayIndex, endDayIndex, color }) => {
-            const left = Math.max(startDayIndex, visibleRange.startIndex) * columnWidthPx
+            const left = Math.max(startDayIndex, visibleStartIndex) * columnWidthPx
             const width =
-              (Math.min(endDayIndex, visibleRange.endIndex) -
-                Math.max(startDayIndex, visibleRange.startIndex) +
+              (Math.min(endDayIndex, visibleEndIndex) -
+                Math.max(startDayIndex, visibleStartIndex) +
                 1) *
               columnWidthPx
 
